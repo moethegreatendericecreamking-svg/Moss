@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Moss</string>
+    <string name="tagline">Snapchat for your friends — without Spotlight or Discover.</string>
+
+    <string name="service_label">Moss – calm Snapchat</string>
+    <string name="service_summary">Blocks Spotlight and hides Discover in Snapchat</string>
+    <string name="service_description">Moss watches the Snapchat app only. When you open Spotlight (or another tab you chose to block) it sends you back, and it covers the Discover section of the Stories tab. Moss has no internet access, never changes Snapchat itself, and ignores every other app.</string>
+
+    <string name="section_protection">Protection</string>
+    <string name="status_on">● On — Moss is watching Snapchat.</string>
+    <string name="status_off">○ Off — turn on “Moss – calm Snapchat” in Accessibility settings.</string>
+    <string name="enable">Open accessibility settings</string>
+    <string name="enable_again">Accessibility settings</string>
+    <string name="restricted_help">Is the switch greyed out (“Restricted setting”)? Android blocks this for apps installed from outside the Play Store. Tap below, then use the ⋮ menu in the top corner → “Allow restricted settings”, and try again.</string>
+    <string name="app_info">Open Moss app info</string>
+
+    <string name="section_block">What to block</string>
+    <string name="block_spotlight">Block Spotlight</string>
+    <string name="stories_title">Stories tab</string>
+    <string name="stories_hide_discover">Hide Discover, keep friends’ stories</string>
+    <string name="stories_block">Block the whole Stories tab</string>
+    <string name="stories_allow">Allow everything</string>
+    <string name="block_map">Block Snap Map</string>
+    <string name="open_snapchat">Open Snapchat</string>
+
+    <string name="section_trouble">Troubleshooting</string>
+    <string name="last_seen_label">What Moss last saw in Snapchat:</string>
+    <string name="last_seen_none">Nothing yet — open Snapchat once Moss is on.</string>
+    <string name="trouble_help">Snapchat changes its layout often. If Spotlight or Discover slips through, tap Record, visit each Snapchat tab for 20 seconds, come back and tap Share. The report lists Snapchat\'s screen structure (it can include names shown on screen) so the rules can be updated. It stays on your phone unless you share it.</string>
+    <string name="record">Record Snapchat layout (20 s)</string>
+    <string name="share">Share layout report</string>
+    <string name="share_subject">Moss layout report</string>
+    <string name="share_empty">No report yet — tap Record first.</string>
+    <string name="record_needs_service">Turn Moss on in Accessibility settings first.</string>
+    <string name="record_started">Recording for 20 seconds — visit Chat, Stories and Spotlight.</string>
+    <string name="snapchat_missing">Snapchat isn’t installed.</string>
+    <string name="privacy_note">Moss has no internet permission. Everything stays on your phone.</string>
+
+    <string name="curtain_label">Discover hidden by Moss\nSwipe down to go back to friends’ stories</string>
+    <string name="toast_blocked">%1$s is blocked by Moss</string>
+    <string name="toast_paused">Moss paused for 20 s — blocking kept repeating. If this keeps happening, send a layout report.</string>
+</resources>
