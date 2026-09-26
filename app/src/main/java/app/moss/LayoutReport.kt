@@ -44,7 +44,8 @@ object LayoutReport {
     }
 
     fun summarize(screen: SnapScreen): String {
-        val nav = screen.navBar?.tabs?.keys?.joinToString(", ") { it.title } ?: "not found"
+        val nav = screen.navBar?.tabs?.entries?.sortedBy { it.value.box.left }?.joinToString(", ") { it.key.title }
+            ?: "not found"
         val active = screen.activeTab?.let { "${it.title} (${screen.detectedBy!!.name.lowercase()})" } ?: "unknown"
         val header = if (screen.discoverHeader != null) "yes" else "no"
         val covered = if (screen.discoverArea != null) "yes" else "no"
@@ -86,7 +87,7 @@ object LayoutReport {
         return out.toString()
     }
 
-    private fun SnapNode.isInformative() = labels.isNotEmpty() || (id != null && !id.startsWith(OBFUSCATED_ID))
+    private fun SnapNode.isInformative() = labels.isNotEmpty() || (!id.isNullOrEmpty() && !id.startsWith(OBFUSCATED_ID))
 
     private fun String.clip(max: Int): String {
         val oneLine = replace('\n', ' ').replace('"', '\'')

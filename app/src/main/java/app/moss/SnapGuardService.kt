@@ -26,6 +26,8 @@ class SnapGuardService : AccessibilityService() {
     private val planner = CurtainPlanner()
     /** The list under the Discover curtain, scrolled back up when the curtain is swiped down. */
     private var discoverList: SnapNode? = null
+    /** The Stories list view itself; the Chat list has the same bounds, so compare identity too. */
+    private var storiesListRef: AccessibilityNodeInfo? = null
     /** Once the Stories list stops scrolling, re-read the screen to shrink the curtain back. */
     private val settleRunnable = Runnable { scheduleEvaluate(0) }
 
@@ -96,6 +98,7 @@ class SnapGuardService : AccessibilityService() {
     /** The Stories list started or kept moving: cover all of it at once, without waiting for a re-read. */
     private fun onSnapchatScroll(event: AccessibilityEvent) {
         val source = event.source ?: return
+        if (source != storiesListRef) return
         val r = Rect().also(source::getBoundsInScreen)
         val now = SystemClock.uptimeMillis()
         val cover = planner.onScrolled(Box(r.left, r.top, r.right, r.bottom), now) ?: return
@@ -133,6 +136,7 @@ class SnapGuardService : AccessibilityService() {
         }
 
         val area = planner.plan(screen, rules.hideDiscover, now)
+        storiesListRef = if (rules.hideDiscover) screen.storiesList?.ref else null
         discoverList = if (area != null) screen.discoverList ?: screen.storiesList else null
         if (area != null) curtain.show(area) else curtain.hide()
     }

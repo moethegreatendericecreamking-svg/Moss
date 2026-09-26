@@ -182,13 +182,20 @@ object SnapDetector {
         return marked.singleOrNull()
     }
 
-    /** Fallback: a visible page title such as "Stories" or "Spotlight" at the top of the screen. */
+    /**
+     * Fallback: the page title ("Chat", "Stories", "Spotlight") centred in the fixed header at the
+     * top. Anything inside a scrolling list or off-centre doesn't count: Chat's filter pills include
+     * one labelled "Stories", and it stays visible while the real title fades during a tab swipe.
+     */
     private fun pageTitleTab(root: SnapNode, nav: NavBar): Tab? {
         val screen = root.box
+        val centerX = (screen.left + screen.right) / 2
         val found = root.walk()
             .filter { n ->
                 n.visible && n.box.bottom <= nav.top && n.box.top < screen.top + screen.height * 0.15 &&
-                    n.box.left >= screen.left && n.box.right <= screen.right
+                    n.box.left >= screen.left && n.box.right <= screen.right &&
+                    abs((n.box.left + n.box.right) / 2 - centerX) <= screen.width / 20 &&
+                    n.ancestors().none { it.scrollable }
             }
             .flatMap { n -> n.labels.asSequence().map { it.lowercase() } }
             .mapNotNull { label ->

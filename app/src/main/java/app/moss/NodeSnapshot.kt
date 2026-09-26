@@ -24,7 +24,7 @@ object NodeSnapshot {
             }
             node.getBoundsInScreen(rect)
             return SnapNode(
-                id = node.viewIdResourceName?.substringAfter(":id/"),
+                id = node.viewIdResourceName?.substringAfter(":id/")?.ifEmpty { null },
                 className = node.className?.toString(),
                 desc = node.contentDescription?.toString(),
                 text = node.text?.toString(),

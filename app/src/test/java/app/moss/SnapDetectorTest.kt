@@ -104,7 +104,7 @@ class SnapDetectorTest {
     fun `falls back to the visible page title when no tab is marked selected`() {
         val root = screenOf(
             n(Box(W, 60, W + 400, 160), text = "Spotlight", visible = false), // neighbouring page, off screen
-            n(Box(40, 60, 400, 160), text = "Chat"),
+            n(Box(440, 60, 640, 160), text = "Chat"),
             navById(selected = null),
         )
         val screen = SnapDetector.read(root)

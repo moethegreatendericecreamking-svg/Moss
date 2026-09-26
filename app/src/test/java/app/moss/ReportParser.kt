@@ -3,7 +3,7 @@ package app.moss
 /** Reads the tree format written by [LayoutReport.render] back into [SnapNode]s. */
 object ReportParser {
     private val LINE = Regex(
-        """^( *)(\S+)(?: #(\S*))?(?: desc="([^"]*)")?(?: text="([^"]*)")?(?: state="([^"]*)")?""" +
+        """^( *)(\S+)(?: #(.*?))?(?: desc="([^"]*)")?(?: text="([^"]*)")?(?: state="([^"]*)")?""" +
             """(?: \[([^\]]*)])? \((-?\d+),(-?\d+),(-?\d+),(-?\d+)\)$"""
     )
 
@@ -14,7 +14,7 @@ object ReportParser {
             val g = match.groups
             val flags = g[7]?.value?.split(' ')?.toSet().orEmpty()
             return SnapNode(
-                id = g[3]?.value?.ifEmpty { null },
+                id = g[3]?.value, // older reports print an empty id as a bare "#"
                 className = g[2]!!.value,
                 desc = g[4]?.value,
                 text = g[5]?.value,

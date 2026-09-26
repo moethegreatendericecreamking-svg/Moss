@@ -16,10 +16,54 @@ class RealLayoutTest {
 
     @Test
     fun `reports round-trip through the parser`() {
-        for (name in listOf("stories-top.txt", "stories-discover-scrolled.txt", "story-viewer-unfollowed.txt", "spotlight.txt")) {
+        val fixtures = listOf(
+            "stories-top.txt", "stories-discover-scrolled.txt", "story-viewer-unfollowed.txt", "spotlight.txt",
+            "chat-pills-mid-swipe.txt", "camera.txt", "following-view-all.txt",
+        )
+        for (name in fixtures) {
             val text = ReportParser.fixture("snapchat-14.24/$name")
             assertEquals(name, text, LayoutReport.render(ReportParser.parse(text)))
         }
+    }
+
+    @Test
+    fun `Chat's "Stories" filter pill is not mistaken for the Stories tab`() {
+        // Mid-swipe the "Chat" title had faded out while the pills stayed visible (third report).
+        val s = screen("chat-pills-mid-swipe.txt")
+        assertNull(s.activeTab)
+        assertNull(s.storiesList)
+        assertNull(s.discoverArea)
+    }
+
+    @Test
+    fun `Chat is recognised by its title even with the filter pills showing`() {
+        val text = ReportParser.fixture("snapchat-14.24/chat-pills-mid-swipe.txt").replace(
+            "              FrameLayout [clk] (639,99,759,219)\n",
+            "              TextView #0_resource_name_obfuscated text=\"Chat\" [clk] (475,81,605,243)\n" +
+                "              FrameLayout [clk] (639,99,759,219)\n",
+        )
+        val s = SnapDetector.read(ReportParser.parse(text))
+        assertEquals(Tab.CHAT, s.activeTab)
+        assertEquals(DetectedBy.PAGE_TITLE, s.detectedBy)
+    }
+
+    @Test
+    fun `nothing is covered on the Camera page`() {
+        val s = screen("camera.txt")
+        assertTrue(s.navBar != null)
+        assertNull(s.activeTab)
+        // The lens bar has a "For you" category; it must not be taken for a Discover heading.
+        assertNull(s.discoverHeader)
+        assertNull(s.discoverArea)
+        assertTrue(LayoutReport.summarize(s).startsWith("nav bar: Snap Map, Chat, Camera, Stories, Spotlight ·"))
+    }
+
+    @Test
+    fun `followed creators on the Following page are left alone`() {
+        // Same tile ids as Discover, but a separate page without the bottom bar.
+        val s = screen("following-view-all.txt")
+        assertNull(s.navBar)
+        assertNull(s.discoverArea)
     }
 
     @Test
