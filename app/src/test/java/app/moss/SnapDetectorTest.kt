@@ -258,6 +258,19 @@ class RulesTest {
 
 class LayoutReportTest {
     @Test
+    fun `hidden elements without ids or labels are left out of reports`() {
+        val root = screenOf(
+            n(Box(0, 0, 10, 10), visible = false, children = listOf(n(Box(0, 0, 10, 10), visible = false))),
+            n(Box(0, 0, 10, 10), visible = false, children = listOf(n(Box(0, 0, 10, 10), id = "chrome_subscribe_button", visible = false))),
+            n(Box(0, 0, 10, 10), visible = false, children = listOf(n(Box(0, 0, 10, 10), text = "My Story", visible = false))),
+        )
+        val out = LayoutReport.render(root)
+        assertEquals(out, 5, out.lines().count { it.isNotBlank() })
+        assertTrue(out.contains("#chrome_subscribe_button [hidden]"))
+        assertTrue(out.contains("text=\"My Story\" [hidden]"))
+    }
+
+    @Test
     fun `report lists ids, flags and bounds`() {
         val out = LayoutReport.render(screenOf(navById(Tab.SPOTLIGHT)))
         assertTrue(out, out.contains("#ngs_spotlight_icon_container [sel clk] (864,2200,1080,2400)"))

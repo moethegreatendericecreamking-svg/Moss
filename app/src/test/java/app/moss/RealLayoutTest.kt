@@ -15,9 +15,41 @@ class RealLayoutTest {
     private fun screen(name: String) = SnapDetector.read(ReportParser.parse(ReportParser.fixture("snapchat-14.24/$name")))
 
     @Test
-    fun `report round-trips through the parser`() {
-        val text = ReportParser.fixture("snapchat-14.24/stories-top.txt")
-        assertEquals(text, LayoutReport.render(ReportParser.parse(text)))
+    fun `reports round-trip through the parser`() {
+        for (name in listOf("stories-top.txt", "stories-discover-scrolled.txt", "story-viewer-unfollowed.txt", "spotlight.txt")) {
+            val text = ReportParser.fixture("snapchat-14.24/$name")
+            assertEquals(name, text, LayoutReport.render(ReportParser.parse(text)))
+        }
+    }
+
+    @Test
+    fun `Spotlight is recognised by its page title`() {
+        val s = screen("spotlight.txt")
+        assertEquals(Tab.SPOTLIGHT, s.activeTab)
+        assertEquals(DetectedBy.PAGE_TITLE, s.detectedBy)
+        // Spotlight plays in the same viewer as stories, but it has no follow button to act on.
+        assertTrue(s.storyViewerOpen)
+        assertFalse(s.unfollowedStoryOpen)
+        assertNull(s.storiesList)
+        assertEquals("ngs_community_icon_container", s.navBar!!.tabs[Tab.STORIES]!!.clickTarget()!!.id)
+    }
+
+    @Test
+    fun `Spotlight is still recognised by its container if the title changes`() {
+        val text = ReportParser.fixture("snapchat-14.24/spotlight.txt").lines()
+            .filterNot { "text=\"Spotlight\"" in it }
+            .joinToString("\n")
+        val s = SnapDetector.read(ReportParser.parse(text))
+        assertEquals(Tab.SPOTLIGHT, s.activeTab)
+        assertEquals(DetectedBy.PAGE_LAYOUT, s.detectedBy)
+    }
+
+    @Test
+    fun `the main Stories list is found for covering while it scrolls`() {
+        val s = screen("stories-top.txt")
+        assertEquals(Box(0, 261, 1080, 2001), s.storiesList!!.box)
+        assertEquals(Box(0, 261, 1080, 2001), s.storiesListArea)
+        assertNull(screen("story-viewer-unfollowed.txt").storiesList)
     }
 
     @Test

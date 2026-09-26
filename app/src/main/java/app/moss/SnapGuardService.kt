@@ -23,8 +23,11 @@ class SnapGuardService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var prefs: Prefs
     private lateinit var curtain: DiscoverCurtain
+    private val planner = CurtainPlanner()
     /** The list under the Discover curtain, scrolled back up when the curtain is swiped down. */
     private var discoverList: SnapNode? = null
+    /** Once the Stories list stops scrolling, re-read the screen to shrink the curtain back. */
+    private val settleRunnable = Runnable { scheduleEvaluate(0) }
 
     private var evaluatePending = false
     private val evaluateRunnable = Runnable {
@@ -41,8 +44,6 @@ class SnapGuardService : AccessibilityService() {
     private var pausedUntil = 0L
     private var lastToastAt = 0L
     private var lastSummary: String? = null
-    private var lastRecordedSummary: String? = null
-    private var lastRecordAt = 0L
 
     override fun onServiceConnected() {
         prefs = Prefs(this)
@@ -61,6 +62,7 @@ class SnapGuardService : AccessibilityService() {
             return
         }
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) onSnapchatClick(event)
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) onSnapchatScroll(event)
         scheduleEvaluate(EVALUATE_DELAY_MS)
     }
 
@@ -91,6 +93,17 @@ class SnapGuardService : AccessibilityService() {
         }
     }
 
+    /** The Stories list started or kept moving: cover all of it at once, without waiting for a re-read. */
+    private fun onSnapchatScroll(event: AccessibilityEvent) {
+        val source = event.source ?: return
+        val r = Rect().also(source::getBoundsInScreen)
+        val now = SystemClock.uptimeMillis()
+        val cover = planner.onScrolled(Box(r.left, r.top, r.right, r.bottom), now) ?: return
+        curtain.show(cover)
+        handler.removeCallbacks(settleRunnable)
+        handler.postDelayed(settleRunnable, planner.settleDelay(now) + 10)
+    }
+
     private fun snapchatRoot(): AccessibilityNodeInfo? {
         val active = rootInActiveWindow
         val pkg = active?.packageName?.toString()
@@ -113,32 +126,35 @@ class SnapGuardService : AccessibilityService() {
         val rules = prefs.rules()
         record(screen, now)
 
-        if (now < pausedUntil) {
+        // The circuit breaker only pauses actions that could loop; the curtain can't, so it stays.
+        if (now >= pausedUntil && enforce(screen, rules, now)) {
             curtain.hide()
             return
         }
 
+        val area = planner.plan(screen, rules.hideDiscover, now)
+        discoverList = if (area != null) screen.discoverList ?: screen.storiesList else null
+        if (area != null) curtain.show(area) else curtain.hide()
+    }
+
+    /** Leaves blocked tabs and closes Discover stories. Returns true if it acted. */
+    private fun enforce(screen: SnapScreen, rules: Rules, now: Long): Boolean {
         var active = screen.activeTab
         val clicked = clickedBlockedTab
         if (clicked != null && now - clickedAt < CLICK_MEMORY_MS && screen.navBar != null) active = clicked
 
         if (active != null && rules.blocks(active)) {
-            curtain.hide()
             redirect(screen, active, rules, now)
-            return
+            return true
         }
         if (active != null) lastAllowedTab = active
 
-        // A Discover story opened anyway (from search, a shared link, before the curtain caught up…).
+        // A Discover story opened anyway (from search, a shared link…).
         if (screen.unfollowedStoryOpen && rules.closeUnfollowedStories && active != Tab.SPOTLIGHT) {
-            curtain.hide()
             block(now, getString(R.string.toast_story_closed)) { performGlobalAction(GLOBAL_ACTION_BACK) }
-            return
+            return true
         }
-
-        val area = if (rules.hideDiscover) screen.discoverArea else null
-        discoverList = if (area != null) screen.discoverList else null
-        if (area != null) curtain.show(area) else curtain.hide()
+        return false
     }
 
     private fun redirect(screen: SnapScreen, blocked: Tab, rules: Rules, now: Long) =
@@ -185,14 +201,7 @@ class SnapGuardService : AccessibilityService() {
             lastSummary = summary
             prefs.status = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date()) + " · " + summary
         }
-        // While recording, keep a snapshot whenever what Moss sees changes, plus one every few seconds.
-        if (System.currentTimeMillis() < prefs.recordUntil &&
-            (summary != lastRecordedSummary || now - lastRecordAt > RECORD_INTERVAL_MS)
-        ) {
-            lastRecordAt = now
-            lastRecordedSummary = summary
-            runCatching { LayoutReport.append(this, screen) }
-        }
+        if (System.currentTimeMillis() < prefs.recordUntil) runCatching { LayoutReport.offer(this, screen, now) }
     }
 
     private fun toast(message: String) {
@@ -211,6 +220,5 @@ class SnapGuardService : AccessibilityService() {
         const val LOOP_LIMIT = 8
         const val PAUSE_MS = 20_000L
         const val TOAST_INTERVAL_MS = 2500L
-        const val RECORD_INTERVAL_MS = 3000L
     }
 }

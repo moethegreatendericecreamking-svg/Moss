@@ -10,26 +10,37 @@ import java.io.File
  */
 object LayoutReport {
     private const val FILE_NAME = "layout-report.txt"
-    private const val MAX_SNAPSHOTS = 12
+    private const val MAX_SNAPSHOTS = 10
     private const val MAX_LINES = 700
+    /** Besides every change in what Moss sees, keep one snapshot this often. */
+    private const val PERIODIC_MS = 5_000L
+    private const val OBFUSCATED_ID = "0_resource_name_obfuscated"
 
     private val seen = HashSet<Int>()
+    private val seenSummaries = HashSet<String>()
     private var count = 0
+    private var lastAt = 0L
 
     fun file(context: Context) = File(context.filesDir, FILE_NAME)
 
     fun start(context: Context, header: String) {
         seen.clear()
+        seenSummaries.clear()
         count = 0
+        lastAt = 0L
         file(context).writeText(header + "\n")
     }
 
-    fun append(context: Context, screen: SnapScreen) {
+    /** Adds a snapshot when what Moss sees is new for this recording, or every [PERIODIC_MS]. */
+    fun offer(context: Context, screen: SnapScreen, now: Long) {
         if (count >= MAX_SNAPSHOTS) return
+        val summary = summarize(screen)
+        if (!seenSummaries.add(summary) && now - lastAt < PERIODIC_MS) return
         val body = render(screen.root)
         if (!seen.add(body.hashCode())) return
+        lastAt = now
         count++
-        file(context).appendText("\n=== snapshot $count · ${summarize(screen)}\n$body")
+        file(context).appendText("\n=== snapshot $count · $summary\n$body")
     }
 
     fun summarize(screen: SnapScreen): String {
@@ -49,6 +60,8 @@ object LayoutReport {
         val out = StringBuilder()
         var lines = 0
         fun line(node: SnapNode, depth: Int) {
+            // Hidden subtrees without any id or label are noise (off-screen pages, placeholders).
+            if (!node.visible && node.walk().none { it.isInformative() }) return
             if (lines++ >= MAX_LINES) return
             out.append("  ".repeat(depth.coerceAtMost(30)))
             out.append(node.className?.substringAfterLast('.') ?: "?")
@@ -72,6 +85,8 @@ object LayoutReport {
         if (lines > MAX_LINES) out.append("… truncated\n")
         return out.toString()
     }
+
+    private fun SnapNode.isInformative() = labels.isNotEmpty() || (id != null && !id.startsWith(OBFUSCATED_ID))
 
     private fun String.clip(max: Int): String {
         val oneLine = replace('\n', ' ').replace('"', '\'')

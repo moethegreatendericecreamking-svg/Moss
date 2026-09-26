@@ -81,6 +81,10 @@ class SnapScreen(
     val storyViewerOpen: Boolean = false,
     /** ...and it's from an account the user doesn't follow (it offers an "Add" button). */
     val unfollowedStoryOpen: Boolean = false,
+    /** The Stories tab's main vertical list (friends, Following, Discover), when it's on screen. */
+    val storiesList: SnapNode? = null,
+    /** The visible part of [storiesList], covered completely while it scrolls. */
+    val storiesListArea: Box? = null,
 )
 
 object SnapDetector {
@@ -106,12 +110,16 @@ object SnapDetector {
         val header = if (onStories) findDiscoverHeader(root, nav!!, active) else null
         // With a story open on top, the feed underneath isn't visible, so there's nothing to cover.
         val discover = if (onStories && viewer == null) findDiscover(root, nav!!, header) else null
+        val list = if (active == Tab.STORIES && viewer == null) findStoriesList(root, nav!!) else null
         return SnapScreen(
             root, nav, active, by, header,
             discoverArea = discover?.first,
             discoverList = discover?.second,
             storyViewerOpen = viewer != null,
             unfollowedStoryOpen = viewer != null && hasFollowButton(viewer),
+            storiesList = list,
+            storiesListArea = list?.let { Box(root.box.left, it.box.top, root.box.right, min(it.box.bottom, nav!!.top)) }
+                ?.takeIf { it.height > 0 },
         )
     }
 
@@ -265,6 +273,14 @@ object SnapDetector {
         while (start > 0 && rows[start - 1].box.width < list.box.width * 3 / 5) start--
         return max(rows[start].box.top, list.box.top)
     }
+
+    /** The big vertical list filling the Stories page (not the sideways rows inside it). */
+    private fun findStoriesList(root: SnapNode, nav: NavBar): SnapNode? = root.walk()
+        .filter { n ->
+            n.visible && n.scrollable && n.box.top < nav.top &&
+                n.box.height >= root.box.height / 3 && n.box.width >= root.box.width * 9 / 10
+        }
+        .maxByOrNull { it.box.area }
 
     /** Snapchat's full-screen story player, if one is open. */
     private fun findStoryViewer(root: SnapNode): SnapNode? = root.walk().firstOrNull { n ->

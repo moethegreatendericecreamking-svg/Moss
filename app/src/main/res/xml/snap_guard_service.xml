@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- No packageNames filter: Moss has to notice when Snapchat leaves the screen so the Discover
-     curtain never lingers over another app. Events from every other app are ignored in code. -->
+     curtain never lingers over another app. Events from every other app are ignored in code.
+     notificationTimeout 0: scroll events must arrive at once so the curtain can cover the moving
+     Stories list before new Discover tiles become tappable. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeWindowsChanged|typeViewClicked|typeViewScrolled|typeViewSelected"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
     android:canRetrieveWindowContent="true"
     android:description="@string/service_description"
-    android:notificationTimeout="100"
+    android:notificationTimeout="0"
     android:summary="@string/service_summary" />

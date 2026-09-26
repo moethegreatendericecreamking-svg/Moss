@@ -66,8 +66,13 @@ of Snapchat's bottom bar and which one is active.
   ids starting with `df_`. The opaque overlay starts at the "Discover" header if it's visible.
   Otherwise it starts at the first half-width grid cell of the feed, which works in any language
   and covers the ads between tiles too. It runs to the bottom of the list. Moss re-checks this on
-  every pass without relying on memory, so a fast fling can't get past it. Swipe down on the
-  overlay to scroll back up to friends' stories. It never covers a story that's playing.
+  every pass without relying on memory. Swipe down on the overlay to scroll back up to friends'
+  stories. It never covers a story that's playing.
+- **Covering while scrolling** (`CurtainPlanner`): re-reading the screen takes a moment, so an
+  overlay that followed the feed during a fling would lag behind it and leave new tiles tappable
+  for a split second. Instead, as soon as the Stories list starts to scroll, the whole list is
+  covered. It shrinks back to just Discover about 0.3 s after scrolling stops. The circuit breaker
+  never pauses the overlay, only the actions that could loop.
 - **Discover stories** (`hasFollowButton`): when Snapchat's story viewer (`opera_viewer`) shows an
   "Add" button, the story is from an account you don't follow, and Moss presses Back. Friends'
   stories and accounts you follow don't have that button. This has its own switch.
