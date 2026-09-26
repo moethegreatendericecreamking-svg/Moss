@@ -73,6 +73,14 @@ class SnapScreen(
     val activeTab: Tab?,
     val detectedBy: DetectedBy?,
     val discoverHeader: SnapNode?,
+    /** Part of the screen showing the Discover feed, which the curtain should cover. */
+    val discoverArea: Box? = null,
+    /** Scrollable list holding the Discover feed (scrolled back up when the curtain is swiped). */
+    val discoverList: SnapNode? = null,
+    /** A full-screen story is playing (Snapchat's "opera" viewer). */
+    val storyViewerOpen: Boolean = false,
+    /** ...and it's from an account the user doesn't follow (it offers an "Add" button). */
+    val unfollowedStoryOpen: Boolean = false,
 )
 
 object SnapDetector {
@@ -80,6 +88,9 @@ object SnapDetector {
     /** Section headers inside the Stories tab that mark where the Discover feed starts. */
     private val DISCOVER_HEADERS = setOf("discover")
     private val DISCOVER_HEADERS_ON_STORIES = setOf("discover", "for you")
+
+    /** Labels the viewer's follow button can have once you already follow the account. */
+    private val FOLLOWING_LABELS = listOf("subscribed", "following", "added")
 
     fun read(root: SnapNode): SnapScreen {
         val nav = findNavBar(root)
@@ -90,12 +101,18 @@ object SnapDetector {
             if (active == null) pageTitleTab(root, nav)?.let { active = it; by = DetectedBy.PAGE_TITLE }
             if (active == null) pageLayoutTab(root, nav)?.let { active = it; by = DetectedBy.PAGE_LAYOUT }
         }
-        val header = if (nav != null && (active == null || active == Tab.STORIES)) {
-            findDiscoverHeader(root, nav, active)
-        } else {
-            null
-        }
-        return SnapScreen(root, nav, active, by, header)
+        val viewer = findStoryViewer(root)
+        val onStories = nav != null && (active == null || active == Tab.STORIES)
+        val header = if (onStories) findDiscoverHeader(root, nav!!, active) else null
+        // With a story open on top, the feed underneath isn't visible, so there's nothing to cover.
+        val discover = if (onStories && viewer == null) findDiscover(root, nav!!, header) else null
+        return SnapScreen(
+            root, nav, active, by, header,
+            discoverArea = discover?.first,
+            discoverList = discover?.second,
+            storyViewerOpen = viewer != null,
+            unfollowedStoryOpen = viewer != null && hasFollowButton(viewer),
+        )
     }
 
     fun tabOf(node: SnapNode): Tab? {
@@ -208,56 +225,62 @@ object SnapDetector {
             }
             .minByOrNull { it.box.top }
     }
-}
 
-/**
- * Decides which part of the screen the Discover curtain should cover.
- *
- * While the "Discover" header is on screen the curtain runs from the header down to the nav bar.
- * Once the user scrolls far enough that the header leaves the top of the list, the whole list is
- * Discover content, so the curtain covers all of it — for as long as that same list stays visible.
- */
-class DiscoverTracker {
-    private class Memory(val listId: String?, val listBox: Box, val headerTop: Int)
+    /** Discover feed tiles carry ids like "df_large_story" (df = Discover feed), in every language. */
+    fun isDiscoverTile(node: SnapNode): Boolean = node.id?.lowercase()?.startsWith("df_") == true
 
-    private var memory: Memory? = null
-
-    fun reset() {
-        memory = null
+    /**
+     * Where the Discover feed is on screen, and the list that scrolls it.
+     *
+     * While the "Discover" header is visible the curtain starts there. Otherwise it starts at the
+     * first grid cell of the feed (see [feedStart]). Nothing is remembered between passes, so a fast
+     * fling that throws the header off the screen in one go can't slip through.
+     */
+    private fun findDiscover(root: SnapNode, nav: NavBar, header: SnapNode?): Pair<Box, SnapNode?>? {
+        val tile = root.walk().firstOrNull { n ->
+            n.visible && n.box.height > 0 && n.box.top < nav.top && isDiscoverTile(n)
+        }
+        val anchor = header ?: tile ?: return null
+        val list = anchor.ancestors().firstOrNull { it.scrollable && it.box.height >= root.box.height / 3 }
+        val top = when {
+            header != null -> max(header.box.top, list?.box?.top ?: root.box.top)
+            list != null -> feedStart(list) ?: tile!!.box.top
+            else -> tile!!.box.top
+        }
+        val bottom = min(list?.box?.bottom ?: nav.top, nav.top)
+        if (top >= bottom) return null
+        return Box(root.box.left, top, root.box.right, bottom) to list
     }
 
-    /** Scrollable list that holds the Discover feed, if known (used to scroll it back up). */
-    var list: SnapNode? = null
-        private set
+    /**
+     * Top of the Discover feed inside the Stories list, without relying on the header's wording.
+     * Feed items (Discover tiles and the ads between them) are half-width grid cells sitting directly
+     * in the list, while section headers and the Friends/Following rows span its full width. The
+     * feed starts at the first cell of the unbroken run of grid cells leading up to the first tile.
+     */
+    private fun feedStart(list: SnapNode): Int? {
+        val rows = list.children.filter { it.visible && it.box.height > 0 }
+        var start = rows.indexOfFirst { row -> row.walk().any(::isDiscoverTile) }
+        if (start < 0) return null
+        while (start > 0 && rows[start - 1].box.width < list.box.width * 3 / 5) start--
+        return max(rows[start].box.top, list.box.top)
+    }
 
-    fun update(screen: SnapScreen): Box? {
-        list = null
-        val nav = screen.navBar ?: return null
-        val active = screen.activeTab
-        if (active != null && active != Tab.STORIES) {
-            memory = null
-            return null
+    /** Snapchat's full-screen story player, if one is open. */
+    private fun findStoryViewer(root: SnapNode): SnapNode? = root.walk().firstOrNull { n ->
+        n.visible && n.id?.substringAfterLast('/') == "opera_viewer" && n.box.area >= root.box.area / 2
+    }
+
+    /**
+     * Stories from accounts you don't follow (Discover publishers, creators, suggestions) show an
+     * "Add" button in the viewer's header; friends' stories and ones you follow don't.
+     */
+    private fun hasFollowButton(viewer: SnapNode): Boolean {
+        val screen = viewer.box
+        return viewer.walk().any { n ->
+            n.visible && n.id?.substringAfterLast('/') == "chrome_subscribe_button" &&
+                n.box.left >= screen.left && n.box.right <= screen.right && n.box.width > 0 &&
+                n.labels.none { l -> FOLLOWING_LABELS.any { it in l.lowercase() } }
         }
-        val root = screen.root.box
-        val header = screen.discoverHeader
-        if (header != null) {
-            val scroller = header.ancestors().firstOrNull { it.scrollable }
-            list = scroller
-            memory = scroller?.let { Memory(it.id, it.box, header.box.top) }
-            val top = max(header.box.top, root.top)
-            return if (top < nav.top) Box(root.left, top, root.right, nav.top) else null
-        }
-        val mem = memory ?: return null
-        val scroller = screen.root.walk().firstOrNull { n ->
-            n.visible && n.scrollable && n.id == mem.listId && n.box == mem.listBox
-        } ?: return null
-        if (mem.headerTop > scroller.box.top + scroller.box.height / 2) {
-            // The header left through the bottom: the user scrolled back up to friends' stories.
-            memory = null
-            return null
-        }
-        list = scroller
-        val bottom = min(scroller.box.bottom, nav.top)
-        return if (scroller.box.top < bottom) Box(root.left, scroller.box.top, root.right, bottom) else null
     }
 }

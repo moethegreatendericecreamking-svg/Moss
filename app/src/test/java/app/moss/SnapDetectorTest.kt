@@ -57,17 +57,6 @@ private fun navByLabel(selected: Tab?) = n(
 
 private fun screenOf(vararg parts: SnapNode) = n(SCREEN, id = "root", children = parts.toList())
 
-private fun storiesList(headerTop: Int?, listId: String = "stories_list") = n(
-    Box(0, 200, W, NAV_TOP), id = listId, scrollable = true,
-    children = buildList {
-        add(n(Box(0, 200, W, 600), id = "friend_story_row", text = "Alex"))
-        if (headerTop != null) {
-            add(n(Box(0, headerTop, W, headerTop + 80), text = "Discover"))
-            add(n(Box(0, headerTop + 80, W / 2, NAV_TOP), id = "tile", desc = "Some publisher"))
-        }
-    },
-)
-
 class SnapDetectorTest {
 
     @Test
@@ -163,58 +152,92 @@ class SnapDetectorTest {
     }
 }
 
-class DiscoverTrackerTest {
+class DiscoverAreaTest {
 
-    private fun stories(headerTop: Int?, selected: Tab? = Tab.STORIES) =
-        SnapDetector.read(screenOf(storiesList(headerTop), navById(selected)))
+    /** Stories list: optional friends row (200–600), optional header, then an ad cell and a tile. */
+    private fun list(
+        headerTop: Int?,
+        friends: Boolean = true,
+        tiles: Boolean = true,
+        tileId: String = "df_large_story",
+        headerText: String = "Discover",
+    ) = n(
+        Box(0, 200, W, NAV_TOP), id = "stories_list", scrollable = true,
+        children = buildList {
+            if (friends) add(n(Box(0, 200, W, 600), id = "friend_story_row", text = "Friend"))
+            if (headerTop != null) add(n(Box(0, headerTop, W, headerTop + 80), text = headerText))
+            if (tiles) {
+                val top = headerTop?.plus(80) ?: if (friends) 600 else 200
+                add(n(Box(28, top, 531, NAV_TOP), children = listOf(n(Box(28, top, 531, NAV_TOP), text = "Sponsored"))))
+                add(n(Box(554, top, 1057, NAV_TOP), children = listOf(n(Box(554, top, 1057, NAV_TOP), id = tileId))))
+            }
+        },
+    )
+
+    private fun stories(
+        headerTop: Int?,
+        selected: Tab? = Tab.STORIES,
+        friends: Boolean = true,
+        tiles: Boolean = true,
+        tileId: String = "df_large_story",
+        headerText: String = "Discover",
+    ) = SnapDetector.read(screenOf(list(headerTop, friends, tiles, tileId, headerText), navById(selected)))
 
     @Test
-    fun `curtain runs from the Discover header to the nav bar`() {
-        val tracker = DiscoverTracker()
-        assertEquals(Box(0, 1200, W, NAV_TOP), tracker.update(stories(headerTop = 1200)))
-        assertEquals("stories_list", tracker.list!!.id)
+    fun `curtain runs from the Discover header to the bottom of the list`() {
+        val s = stories(headerTop = 1200)
+        assertEquals(Box(0, 1200, W, NAV_TOP), s.discoverArea)
+        assertEquals("stories_list", s.discoverList!!.id)
     }
 
     @Test
-    fun `no Discover header and no history means no curtain`() {
-        assertNull(DiscoverTracker().update(stories(headerTop = null)))
+    fun `scrolled into the feed, the whole list is covered`() {
+        assertEquals(Box(0, 200, W, NAV_TOP), stories(headerTop = null, friends = false).discoverArea)
     }
 
     @Test
-    fun `curtain covers the whole list after the header scrolls off the top`() {
-        val tracker = DiscoverTracker()
-        tracker.update(stories(headerTop = 260))
-        assertEquals(Box(0, 200, W, NAV_TOP), tracker.update(stories(headerTop = null)))
-        // Scrolling back up brings the header back into view.
-        assertEquals(Box(0, 1500, W, NAV_TOP), tracker.update(stories(headerTop = 1500)))
+    fun `with the header in another language, the curtain starts at the feed and spares friends`() {
+        val s = stories(headerTop = 1200, headerText = "Entdecken")
+        assertNull(s.discoverHeader)
+        assertEquals(Box(0, 1280, W, NAV_TOP), s.discoverArea)
+        assertEquals(Box(0, 600, W, NAV_TOP), stories(headerTop = null).discoverArea)
     }
 
     @Test
-    fun `header leaving through the bottom means friends' stories are showing`() {
-        val tracker = DiscoverTracker()
-        tracker.update(stories(headerTop = 2000))
-        assertNull(tracker.update(stories(headerTop = null)))
+    fun `the header alone is enough if the tile ids ever change`() {
+        assertEquals(Box(0, 1500, W, NAV_TOP), stories(headerTop = 1500, tileId = "renamed_tile").discoverArea)
     }
 
     @Test
-    fun `switching to another tab clears the curtain and its history`() {
-        val tracker = DiscoverTracker()
-        tracker.update(stories(headerTop = 260))
-        assertNull(tracker.update(stories(headerTop = null, selected = Tab.CHAT)))
-        assertNull(tracker.update(stories(headerTop = null, selected = null)))
+    fun `friends' stories alone are never covered`() {
+        assertNull(stories(headerTop = null, tiles = false).discoverArea)
     }
 
     @Test
-    fun `a different list does not inherit the curtain`() {
-        val tracker = DiscoverTracker()
-        tracker.update(stories(headerTop = 260))
-        val chatList = SnapDetector.read(screenOf(storiesList(headerTop = null, listId = "chat_list"), navById(null)))
-        assertNull(tracker.update(chatList))
+    fun `nothing is covered on other tabs`() {
+        assertNull(stories(headerTop = 1200, selected = Tab.CHAT).discoverArea)
     }
 
     @Test
-    fun `Discover header on the Chat tab is ignored`() {
-        assertNull(DiscoverTracker().update(stories(headerTop = 1200, selected = Tab.CHAT)))
+    fun `nothing is covered while a story is playing on top`() {
+        val viewer = n(Box(0, 0, W, H), id = "opera_viewer")
+        val s = SnapDetector.read(screenOf(list(headerTop = 1200), viewer, navById(Tab.STORIES)))
+        assertTrue(s.storyViewerOpen)
+        assertFalse(s.unfollowedStoryOpen)
+        assertNull(s.discoverArea)
+    }
+
+    @Test
+    fun `an Add button marks a story from an account you don't follow`() {
+        fun viewerWith(button: SnapNode) = SnapDetector.read(
+            screenOf(n(Box(0, 0, W, H), id = "opera_viewer", children = listOf(button)), navById(Tab.STORIES))
+        )
+        val add = n(Box(677, 111, 954, 219), id = "context_chrome_header/chrome_subscribe_button", desc = "Add")
+        assertTrue(viewerWith(add).unfollowedStoryOpen)
+        val subscribed = n(Box(677, 111, 954, 219), id = "chrome_subscribe_button", desc = "Subscribed")
+        assertFalse(viewerWith(subscribed).unfollowedStoryOpen)
+        val offscreen = n(Box(-1483, 111, -1206, 219), id = "chrome_subscribe_button", desc = "Add")
+        assertFalse(viewerWith(offscreen).unfollowedStoryOpen)
     }
 }
 
@@ -225,6 +248,7 @@ class RulesTest {
         assertTrue(rules.blocks(Tab.SPOTLIGHT))
         assertFalse(rules.blocks(Tab.STORIES))
         assertTrue(rules.hideDiscover)
+        assertTrue(rules.closeUnfollowedStories)
         assertFalse(rules.blocks(Tab.CHAT))
         assertFalse(rules.blocks(Tab.CAMERA))
         assertTrue(rules.copy(storiesMode = StoriesMode.BLOCK_TAB).blocks(Tab.STORIES))

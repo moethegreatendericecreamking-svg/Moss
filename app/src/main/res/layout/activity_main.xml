@@ -99,6 +99,20 @@
         </RadioGroup>
 
         <Switch
+            android:id="@+id/close_unfollowed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="48dp"
+            android:text="@string/close_unfollowed"
+            android:textSize="16sp" />
+
+        <TextView
+            style="@style/Moss.Help"
+            android:layout_marginTop="0dp"
+            android:text="@string/close_unfollowed_help" />
+
+        <Switch
             android:id="@+id/block_map"
             android:layout_width="match_parent"
             android:layout_height="48dp"

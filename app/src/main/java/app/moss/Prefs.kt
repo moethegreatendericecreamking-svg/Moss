@@ -4,7 +4,13 @@ import android.content.Context
 
 enum class StoriesMode { HIDE_DISCOVER, BLOCK_TAB, ALLOW }
 
-data class Rules(val blockSpotlight: Boolean, val storiesMode: StoriesMode, val blockMap: Boolean) {
+data class Rules(
+    val blockSpotlight: Boolean,
+    val storiesMode: StoriesMode,
+    val blockMap: Boolean,
+    /** Close stories from accounts the user doesn't follow, however they were opened. */
+    val closeUnfollowedStories: Boolean = true,
+) {
     fun blocks(tab: Tab): Boolean = when (tab) {
         Tab.SPOTLIGHT -> blockSpotlight
         Tab.STORIES -> storiesMode == StoriesMode.BLOCK_TAB
@@ -31,6 +37,10 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("block_map", false)
         set(v) = sp.edit().putBoolean("block_map", v).apply()
 
+    var closeUnfollowedStories: Boolean
+        get() = sp.getBoolean("close_unfollowed_stories", true)
+        set(v) = sp.edit().putBoolean("close_unfollowed_stories", v).apply()
+
     /** Wall-clock time until which the service records Snapchat's screen layout for a report. */
     var recordUntil: Long
         get() = sp.getLong("record_until", 0L)
@@ -41,5 +51,5 @@ class Prefs(context: Context) {
         get() = sp.getString("status", null)
         set(v) = sp.edit().putString("status", v).apply()
 
-    fun rules() = Rules(blockSpotlight, storiesMode, blockMap)
+    fun rules() = Rules(blockSpotlight, storiesMode, blockMap, closeUnfollowedStories)
 }

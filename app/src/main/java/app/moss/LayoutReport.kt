@@ -35,8 +35,14 @@ object LayoutReport {
     fun summarize(screen: SnapScreen): String {
         val nav = screen.navBar?.tabs?.keys?.joinToString(", ") { it.title } ?: "not found"
         val active = screen.activeTab?.let { "${it.title} (${screen.detectedBy!!.name.lowercase()})" } ?: "unknown"
-        val discover = if (screen.discoverHeader != null) "yes" else "no"
-        return "nav bar: $nav · active tab: $active · Discover header: $discover"
+        val header = if (screen.discoverHeader != null) "yes" else "no"
+        val covered = if (screen.discoverArea != null) "yes" else "no"
+        val story = when {
+            screen.unfollowedStoryOpen -> " · story open: not followed"
+            screen.storyViewerOpen -> " · story open"
+            else -> ""
+        }
+        return "nav bar: $nav · active tab: $active · Discover header: $header · Discover on screen: $covered$story"
     }
 
     fun render(root: SnapNode): String {

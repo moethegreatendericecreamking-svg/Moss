@@ -23,7 +23,8 @@ class SnapGuardService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var prefs: Prefs
     private lateinit var curtain: DiscoverCurtain
-    private val tracker = DiscoverTracker()
+    /** The list under the Discover curtain, scrolled back up when the curtain is swiped down. */
+    private var discoverList: SnapNode? = null
 
     private var evaluatePending = false
     private val evaluateRunnable = Runnable {
@@ -35,8 +36,8 @@ class SnapGuardService : AccessibilityService() {
     private var lastAllowedTab: Tab? = null
     private var clickedBlockedTab: Tab? = null
     private var clickedAt = 0L
-    private var lastRedirectAt = 0L
-    private val recentRedirects = ArrayDeque<Long>()
+    private var lastBlockAt = 0L
+    private val recentBlocks = ArrayDeque<Long>()
     private var pausedUntil = 0L
     private var lastToastAt = 0L
     private var lastSummary: String? = null
@@ -128,44 +129,53 @@ class SnapGuardService : AccessibilityService() {
         }
         if (active != null) lastAllowedTab = active
 
-        val area = if (rules.hideDiscover) {
-            tracker.update(screen)
-        } else {
-            tracker.reset()
-            null
+        // A Discover story opened anyway (from search, a shared link, before the curtain caught up…).
+        if (screen.unfollowedStoryOpen && rules.closeUnfollowedStories && active != Tab.SPOTLIGHT) {
+            curtain.hide()
+            block(now, getString(R.string.toast_story_closed)) { performGlobalAction(GLOBAL_ACTION_BACK) }
+            return
         }
+
+        val area = if (rules.hideDiscover) screen.discoverArea else null
+        discoverList = if (area != null) screen.discoverList else null
         if (area != null) curtain.show(area) else curtain.hide()
     }
 
-    private fun redirect(screen: SnapScreen, blocked: Tab, rules: Rules, now: Long) {
-        val sinceLast = now - lastRedirectAt
-        if (sinceLast < REDIRECT_COOLDOWN_MS) {
-            scheduleEvaluate(REDIRECT_COOLDOWN_MS - sinceLast)
+    private fun redirect(screen: SnapScreen, blocked: Tab, rules: Rules, now: Long) =
+        block(now, getString(R.string.toast_blocked, blocked.title)) {
+            val target = lastAllowedTab?.takeUnless { rules.blocks(it) } ?: Tab.CAMERA
+            val tapped = screen.navBar?.tabs?.get(target)?.clickTarget()?.ref
+                ?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+            if (!tapped) performGlobalAction(GLOBAL_ACTION_BACK)
+        }
+
+    /** Runs a blocking [action], rate-limited, and pauses Moss if it keeps firing. */
+    private fun block(now: Long, message: String, action: () -> Unit) {
+        val sinceLast = now - lastBlockAt
+        if (sinceLast < BLOCK_COOLDOWN_MS) {
+            scheduleEvaluate(BLOCK_COOLDOWN_MS - sinceLast)
             return
         }
         clickedBlockedTab = null
-        lastRedirectAt = now
+        lastBlockAt = now
 
         // Circuit breaker: if we keep bouncing, detection is probably wrong for this Snapchat build.
-        recentRedirects.addLast(now)
-        while (recentRedirects.first() < now - LOOP_WINDOW_MS) recentRedirects.removeFirst()
-        if (recentRedirects.size > LOOP_LIMIT) {
-            recentRedirects.clear()
+        recentBlocks.addLast(now)
+        while (recentBlocks.first() < now - LOOP_WINDOW_MS) recentBlocks.removeFirst()
+        if (recentBlocks.size > LOOP_LIMIT) {
+            recentBlocks.clear()
             pausedUntil = now + PAUSE_MS
             toast(getString(R.string.toast_paused))
             return
         }
 
-        val target = lastAllowedTab?.takeUnless { rules.blocks(it) } ?: Tab.CAMERA
-        val tapped = screen.navBar?.tabs?.get(target)?.clickTarget()?.ref
-            ?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
-        if (!tapped) performGlobalAction(GLOBAL_ACTION_BACK)
-        toast(getString(R.string.toast_blocked, blocked.title))
+        action()
+        toast(message)
         scheduleEvaluate(RECHECK_DELAY_MS)
     }
 
     private fun scrollDiscoverUp() {
-        tracker.list?.ref?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+        discoverList?.ref?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
         scheduleEvaluate(EVALUATE_DELAY_MS)
     }
 
@@ -195,7 +205,7 @@ class SnapGuardService : AccessibilityService() {
     private companion object {
         const val EVALUATE_DELAY_MS = 150L
         const val RECHECK_DELAY_MS = 450L
-        const val REDIRECT_COOLDOWN_MS = 700L
+        const val BLOCK_COOLDOWN_MS = 700L
         const val CLICK_MEMORY_MS = 1500L
         const val LOOP_WINDOW_MS = 10_000L
         const val LOOP_LIMIT = 8

@@ -5,7 +5,8 @@ that sits next to the official Snapchat app:
 
 - **Spotlight** – tapping or swiping to the Spotlight tab bounces you straight back.
 - **Discover** – on the Stories tab, the Discover section is covered by a plain panel, so friends'
-  stories stay but the endless feed is gone. (Or block the whole Stories tab.)
+  stories stay but the endless feed is gone. (Or block the whole Stories tab.) If a Discover story
+  opens anyway, for example from search or a shared link, Moss closes it.
 - **Snap Map** – optional, off by default.
 
 Chat, Camera, snaps and friends' stories work exactly as before.
@@ -61,14 +62,23 @@ of Snapchat's bottom bar and which one is active.
 - **Blocking** (`SnapGuardService`): when a blocked tab is active, Moss taps the last allowed tab
   (Camera by default), or presses Back if it can't. If it keeps bouncing, which means detection
   has gone wrong, it pauses itself for 20 seconds instead of locking you out of Snapchat.
-- **Discover curtain** (`DiscoverTracker`, `DiscoverCurtain`): finds the "Discover" section header
-  on the Stories tab and draws an opaque overlay from there down to the bottom bar. Once the header
-  scrolls off the top, the overlay covers the whole list. Swipe down on it to scroll back up to
-  friends' stories.
+- **Discover curtain** (`SnapDetector.findDiscover`, `DiscoverCurtain`): Discover tiles have view
+  ids starting with `df_`. The opaque overlay starts at the "Discover" header if it's visible.
+  Otherwise it starts at the first half-width grid cell of the feed, which works in any language
+  and covers the ads between tiles too. It runs to the bottom of the list. Moss re-checks this on
+  every pass without relying on memory, so a fast fling can't get past it. Swipe down on the
+  overlay to scroll back up to friends' stories. It never covers a story that's playing.
+- **Discover stories** (`hasFollowButton`): when Snapchat's story viewer (`opera_viewer`) shows an
+  "Add" button, the story is from an account you don't follow, and Moss presses Back. Friends'
+  stories and accounts you follow don't have that button. This has its own switch.
 
-Known limits: the Discover curtain looks for the English "Discover" header, so other languages
-currently fall back to tab blocking only. The curtain follows scrolling with a short delay.
-Discover or Spotlight content that a friend sends you in chat still opens.
+Known limits: the curtain follows scrolling with a short delay. Spotlight videos a friend sends
+you in chat still open. A friend's *public profile* story may show an "Add" button and get closed;
+turn off "Close Discover stories that open anyway" if that happens.
+
+`app/src/test/resources/snapchat-*/` holds screens recorded with the layout recorder, with names
+replaced by placeholders. The tests run the detector against them, so every fix is checked against
+real Snapchat layouts.
 
 ## Build it yourself
 

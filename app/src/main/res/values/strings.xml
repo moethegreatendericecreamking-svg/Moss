@@ -21,6 +21,8 @@
     <string name="stories_hide_discover">Hide Discover, keep friends’ stories</string>
     <string name="stories_block">Block the whole Stories tab</string>
     <string name="stories_allow">Allow everything</string>
+    <string name="close_unfollowed">Close Discover stories that open anyway</string>
+    <string name="close_unfollowed_help">Closes stories from accounts you don’t follow, e.g. opened from search or a shared link. Friends’ stories aren’t affected. Turn off if it closes something you wanted to watch.</string>
     <string name="block_map">Block Snap Map</string>
     <string name="open_snapchat">Open Snapchat</string>
 
@@ -39,5 +41,6 @@
 
     <string name="curtain_label">Discover hidden by Moss\nSwipe down to go back to friends’ stories</string>
     <string name="toast_blocked">%1$s is blocked by Moss</string>
+    <string name="toast_story_closed">Discover stories are blocked by Moss</string>
     <string name="toast_paused">Moss paused for 20 s — blocking kept repeating. If this keeps happening, send a layout report.</string>
 </resources>

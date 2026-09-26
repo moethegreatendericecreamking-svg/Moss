@@ -38,6 +38,10 @@ class MainActivity : Activity() {
             isChecked = prefs.blockSpotlight
             setOnCheckedChangeListener { _, checked -> prefs.blockSpotlight = checked }
         }
+        find<Switch>(R.id.close_unfollowed).apply {
+            isChecked = prefs.closeUnfollowedStories
+            setOnCheckedChangeListener { _, checked -> prefs.closeUnfollowedStories = checked }
+        }
         find<Switch>(R.id.block_map).apply {
             isChecked = prefs.blockMap
             setOnCheckedChangeListener { _, checked -> prefs.blockMap = checked }
