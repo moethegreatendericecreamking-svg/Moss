@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claude</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="sidepanel.js"></script>
+  </head>
+  <body class="panel">
+    <header class="topbar">
+      <div class="brand">
+        <img src="icons/icon32.png" alt="" width="20" height="20" />
+        <span>Claude</span>
+        <span id="model-label" class="model-label"></span>
+      </div>
+      <div class="actions">
+        <button id="new-chat" class="icon-btn" type="button" title="New chat" aria-label="New chat">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>
+        </button>
+        <button id="open-settings" class="icon-btn" type="button" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="10" cy="10" r="2.5" />
+            <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="scroller" class="scroller">
+      <section id="setup" class="card" hidden>
+        <h2>Add your API key</h2>
+        <p>
+          This extension talks to Claude through the Anthropic API using your own key. Usage is billed
+          to your Anthropic account.
+        </p>
+        <button id="setup-open" class="primary" type="button">Open settings</button>
+      </section>
+
+      <section id="welcome" class="welcome" hidden>
+        <h2>How can I help?</h2>
+        <p>Ask anything, or have Claude read the page you're on.</p>
+        <div class="suggestions">
+          <button type="button" data-prompt="Summarize this page.">Summarize this page</button>
+          <button type="button" data-prompt="What are the key takeaways from this page?">Key takeaways</button>
+          <button type="button" data-prompt="Explain the selected text in plain language." data-needs-selection>
+            Explain my selection
+          </button>
+        </div>
+        <p class="hint">Tip: select text on a page, right-click, and choose <em>Ask Claude about…</em></p>
+      </section>
+
+      <div id="messages" class="messages"></div>
+    </main>
+
+    <footer class="composer">
+      <div id="notice" class="notice" role="alert" hidden></div>
+      <div id="attachment" class="attachment" hidden>
+        <div class="chip">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 2.5h5.5L15 6v11.5H6zM11.5 2.5V6H15" /></svg>
+          <span id="attachment-title" class="chip-title"></span>
+          <button id="attachment-remove" type="button" title="Remove page" aria-label="Remove page">×</button>
+        </div>
+        <div id="attachment-note" class="attachment-note"></div>
+      </div>
+      <form id="form" class="input-row">
+        <button id="attach" class="icon-btn" type="button" title="Attach this page" aria-label="Attach this page">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M14.5 9.5l-5.2 5.2a3.2 3.2 0 0 1-4.5-4.5l5.6-5.6a2.1 2.1 0 0 1 3 3l-5.5 5.5a1 1 0 0 1-1.5-1.5l5-5" />
+          </svg>
+        </button>
+        <textarea id="input" rows="1" placeholder="Message Claude" aria-label="Message Claude"></textarea>
+        <button id="send" class="send" type="submit" title="Send" aria-label="Send">
+          <svg class="icon-send" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16V4M5 9l5-5 5 5" /></svg>
+          <svg class="icon-stop" viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="5.5" width="9" height="9" rx="1.5" /></svg>
+        </button>
+      </form>
+    </footer>
+  </body>
+</html>

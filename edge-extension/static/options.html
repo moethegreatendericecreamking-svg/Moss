@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claude Chat settings</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="options.js"></script>
+  </head>
+  <body class="options">
+    <main>
+      <header class="options-header">
+        <img src="icons/icon48.png" alt="" width="40" height="40" />
+        <div>
+          <h1>Side Panel Chat for Claude</h1>
+          <p>Unofficial extension. Not made by or affiliated with Anthropic.</p>
+        </div>
+      </header>
+
+      <form id="form" class="card">
+        <label for="api-key">Anthropic API key</label>
+        <div class="key-row">
+          <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" />
+          <button id="toggle-key" type="button">Show</button>
+        </div>
+        <p class="help">
+          Create one at
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+          The key is stored only in this browser profile and is sent only to api.anthropic.com. Usage is billed to
+          your Anthropic account.
+        </p>
+
+        <label for="model">Model</label>
+        <select id="model"></select>
+
+        <label for="effort">Effort</label>
+        <select id="effort"></select>
+        <p class="help">
+          Higher effort lets Claude think longer. It helps with hard questions but is slower and costs more. Medium
+          suits most chats.
+        </p>
+
+        <div class="save-row">
+          <button class="primary" type="submit">Save</button>
+          <span id="status" role="status"></span>
+        </div>
+      </form>
+
+      <section class="card">
+        <h2>How to use it</h2>
+        <ul>
+          <li>Click the extension's toolbar button, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>, to open the side panel.</li>
+          <li>Click the paperclip to attach the page you're viewing, including any text you've selected.</li>
+          <li>Right-click selected text and choose <em>Ask Claude about…</em>, or right-click a page and choose <em>Summarize this page with Claude</em>.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Privacy</h2>
+        <p>
+          Pages are only read when you attach one or use the right-click menu, and are then sent to the Anthropic API
+          with your message. Nothing is sent anywhere else, and conversations aren't saved: closing the side panel or
+          starting a new chat clears them.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

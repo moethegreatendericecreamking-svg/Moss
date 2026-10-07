@@ -93,3 +93,9 @@ Requires JDK 17+ and the Android SDK (platform 35).
 ./gradlew testDebugUnitTest assembleDebug
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
+
+## Also in this repo: Claude in Edge's side panel
+
+[`edge-extension/`](edge-extension/) is a separate Microsoft Edge extension that lets you chat with
+Claude in the browser's side panel and ask about the page you're on. See its
+[README](edge-extension/README.md) to install it.

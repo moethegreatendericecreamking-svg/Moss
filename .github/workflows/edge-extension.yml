@@ -1,0 +1,40 @@
+name: Build Edge extension
+
+on:
+  push:
+    paths:
+      - "edge-extension/**"
+      - ".github/workflows/edge-extension.yml"
+  pull_request:
+    paths:
+      - "edge-extension/**"
+      - ".github/workflows/edge-extension.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: edge-extension
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: edge-extension/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck and build
+        run: npm run typecheck && npm run build
+
+      - name: Upload extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-edge-extension
+          path: edge-extension/dist
+          if-no-files-found: error
